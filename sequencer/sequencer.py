@@ -4,7 +4,6 @@ import time
 
 class Sequencer:
     pulses_per_beat = 2
-    MAX_PULSES = 1000
 
     def __init__(self, pattern, bpm):
         self.pattern = pattern
@@ -14,8 +13,6 @@ class Sequencer:
 
         self.pulse_duration = self._calculate_pulse_duration(bpm)
         self.playing = False
-
-        self.pulse_count = 0
 
     def _calculate_pulse_duration(self, bpm):
         return 60 / (bpm * self.pulses_per_beat)
@@ -31,17 +28,10 @@ class Sequencer:
 
     def play(self):
         self.playing = True
-        t0 = time.time()
         while self.playing:
             pulse_start_time = time.time()
-            self.pulse_count += 1
             self._play_pulse()
             self._wait_pulse_done(pulse_start_time)
-            if self.pulse_count >= self.MAX_PULSES:
-                self.playing = False
-        print(
-            ((time.time() - t0) / self.pulse_count) / self.pulse_duration
-        )
 
     def stop(self):
         self.playing = False

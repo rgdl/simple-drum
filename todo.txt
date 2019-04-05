@@ -1,3 +1,4 @@
+- investigate the 'water drop' thing with the tone drums
 - make GUI (live pattern and parameter changes, play/stop, tempo control)
 - debounce live parameter changes if performance is bad
 - basic, static filters to shape drums
