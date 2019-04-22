@@ -6,4 +6,3 @@
 - why are the first few beats after playback beings rushed?
 - run play loop in a separate thread to the rest of the program (allow parameter tweaks, also listening for the stop event)
 - experiment with simple per-drum reverb (i.e. diffuse multi-delay? Will this destroy performance?)
-- refactor sample creation to use an object property 'parameters' (pitch, decay, etc.). This can be updated and the sample regenerated during playback

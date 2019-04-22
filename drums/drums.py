@@ -1,4 +1,6 @@
 import abc
+import re
+import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,13 +12,31 @@ BIT_DEPTH = 16
 DRUM_END_PADDING_SAMPLES = 10
 
 
-class Drum(abc.ABC):
+class DrumBaseClass(abc.ABC):
     SAMPLE_DURATION = 1
     T = np.linspace(0, SAMPLE_DURATION, SAMPLE_DURATION * SAMPLE_RATE, False)
 
-    def __init__(self):
-        self.sample = self.generate_sample()
-        self.T = self._generate_timescale()
+    PARAMETER_RANGE_LOOKUP = {
+        '^.*DECAY$': (1e-3, SAMPLE_DURATION),
+        '^.*PITCH$': (2e1, 2e3),
+        '^.*RATIO$': (0, 1),
+    }
+
+    def __init__(self, **init_params):
+        self.params = self.DEFAULT_PARAMS
+        if init_params:
+            unrecognised_parameters = set(init_params.keys()) - set(self.DEFAULT_PARAMS.keys())
+            if unrecognised_parameters:
+                raise TypeError(f'Unrecognised parameters supplied: {unrecognised_parameters}')
+            self.params.update(init_params)
+
+        self.parameter_ranges = {param: self._get_parameter_valid_range(param) for param in self.params.keys()}
+        self._validate_params()
+
+        self.envelopes = {}
+        self.sample = None
+
+        self.update_sample()
         self.play_object = None
 
     def play(self):
@@ -30,11 +50,26 @@ class Drum(abc.ABC):
     def generate_sample(self):
         pass
 
-    @classmethod
-    def _generate_timescale(cls):
-        return np.linspace(0, cls.SAMPLE_DURATION, cls.SAMPLE_DURATION * SAMPLE_RATE, False)
+    def update_sample(self, params={}):
+        if params:
+            self.params.update(params)
+        self.sample = self.generate_sample()
 
-    def _linear_decay_envelope(self, max_value, min_value, decay_time):
+    def _get_parameter_valid_range(self, parameter_name):
+        for pattern, valid_range in self.PARAMETER_RANGE_LOOKUP.items():
+            if re.match(pattern, parameter_name):
+                return valid_range
+
+    def _validate_params(self):
+        for name, value in self.params.items():
+            valid_range = self.parameter_ranges[name]
+            if not valid_range:
+                warnings.warn(f'No range validation for parameter {name}')
+                return
+            if not valid_range[0] <= value <= valid_range[1]:
+                raise ValueError(f'{self.__class__.__name__} {name} = {value}, must be in the range {valid_range}')
+
+    def _decay_envelope(self, max_value, min_value, decay_time):
         decay_end_point = int(decay_time * SAMPLE_RATE)
         decay_gradient = (min_value - max_value) / decay_time
         decay_segment = (self.T * decay_gradient + max_value)[:decay_end_point]
@@ -42,12 +77,15 @@ class Drum(abc.ABC):
         return np.hstack([decay_segment, sustain_segment])
 
     def _tone_drum_synth(self, start_pitch, end_pitch, amp_decay_time, freq_decay_time):
-        pitch_envelope = self._linear_decay_envelope(start_pitch, end_pitch, freq_decay_time)
-        amp_envelope = self._linear_decay_envelope(1, 0, amp_decay_time)
+        pitch_envelope = self._decay_envelope(start_pitch, end_pitch, freq_decay_time)
+        amp_envelope = self._decay_envelope(1, 0, amp_decay_time)
+        self.envelopes['tone_pitch_envelope'] = pitch_envelope
+        self.envelopes['tone_amp_envelope'] = amp_envelope
         return self._normalise(amp_envelope * np.sin(self.T * 2 * np.pi * pitch_envelope))
 
     def _noise_drum_synth(self, amp_decay_time):
-        amp_envelope = self._linear_decay_envelope(1, 0, amp_decay_time)
+        amp_envelope = self._decay_envelope(1, 0, amp_decay_time)
+        self.envelopes['noise_amp_envelope'] = amp_envelope
         return self._normalise(amp_envelope * np.random.uniform(size=len(self.T)))
 
     @staticmethod
@@ -60,29 +98,58 @@ class Drum(abc.ABC):
         return (audio * max_range / np.max(np.abs(audio))).astype(np.int16)
 
 
-class BassDrum(Drum):
+class BassDrum(DrumBaseClass):
+    DEFAULT_PARAMS = {
+        'MAX_PITCH': 200,
+        'MIN_PITCH': 40,
+        'AMP_DECAY': 0.2,
+        'FREQ_DECAY': 0.25,
+    }
+
     def generate_sample(self):
-        return self._tone_drum_synth(200, 40, 0.2, 0.25)
-
-
-class SnareDrum(Drum):
-    NOISE_VOLUME_RATIO = 0.5
-
-    def generate_sample(self):
-        tone_component = self._tone_drum_synth(500, 200, 0.1, 0.15)
-        noise_component = self._noise_drum_synth(0.2)
-        return self._normalise(
-            tone_component * (1 - self.NOISE_VOLUME_RATIO) + noise_component * self.NOISE_VOLUME_RATIO
+        return self._tone_drum_synth(
+            self.params['MAX_PITCH'],
+            self.params['MIN_PITCH'],
+            self.params['AMP_DECAY'],
+            self.params['FREQ_DECAY'],
         )
 
 
-class HighHat(Drum):
+class SnareDrum(DrumBaseClass):
+    DEFAULT_PARAMS = {
+        'MAX_PITCH': 200,
+        'MIN_PITCH': 40,
+        'TONE_AMP_DECAY': 0.2,
+        'FREQ_DECAY': 0.25,
+        'NOISE_AMP_DECAY': 0.2,
+        'NOISE_VOLUME_RATIO': 0.5,
+    }
+
     def generate_sample(self):
-        return self._noise_drum_synth(0.05)
+        tone_component = self._tone_drum_synth(
+            start_pitch=self.params['MAX_PITCH'],
+            end_pitch=self.params['MIN_PITCH'],
+            amp_decay_time=self.params['TONE_AMP_DECAY'],
+            freq_decay_time=self.params['FREQ_DECAY'],
+        )
+        noise_component = self._noise_drum_synth(amp_decay_time=self.params['NOISE_AMP_DECAY'])
+        return self._normalise(
+            tone_component * (1 - self.params['NOISE_VOLUME_RATIO'])
+            + noise_component * self.params['NOISE_VOLUME_RATIO']
+        )
+
+
+class HighHat(DrumBaseClass):
+    DEFAULT_PARAMS = {
+        'DECAY': 0.05,
+    }
+
+    def generate_sample(self):
+        return self._noise_drum_synth(self.params['DECAY'])
 
 
 if __name__ == '__main__':
-    play = False
+    play = True
     visualise = True
     if play:
         import time
