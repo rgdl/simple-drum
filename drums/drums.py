@@ -15,6 +15,7 @@ DRUM_END_PADDING_SAMPLES = 10
 class DrumBaseClass(abc.ABC):
     SAMPLE_DURATION = 1
     T = np.linspace(0, SAMPLE_DURATION, SAMPLE_DURATION * SAMPLE_RATE, False)
+    DT = T[1] - T[0]
 
     PARAMETER_RANGE_LOOKUP = {
         '^.*DECAY$': (1e-3, SAMPLE_DURATION),
@@ -81,7 +82,7 @@ class DrumBaseClass(abc.ABC):
         amp_envelope = self._decay_envelope(1, 0, amp_decay_time)
         self.envelopes['tone_pitch_envelope'] = pitch_envelope
         self.envelopes['tone_amp_envelope'] = amp_envelope
-        return self._normalise(amp_envelope * np.sin(self.T * 2 * np.pi * pitch_envelope))
+        return self._normalise(amp_envelope * np.sin(2 * np.pi * pitch_envelope.cumsum() * self.DT))
 
     def _noise_drum_synth(self, amp_decay_time):
         amp_envelope = self._decay_envelope(1, 0, amp_decay_time)
@@ -167,7 +168,6 @@ if __name__ == '__main__':
             high_hat.play()
             time.sleep(sleep_amount)
     if visualise:
-        print('Why does the kick drum make a plop sound?')
         bd = BassDrum()
         plt.plot(bd.T, bd.sample)
         plt.show()
