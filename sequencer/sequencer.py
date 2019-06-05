@@ -1,14 +1,19 @@
 from itertools import cycle
 import time
+from typing import Dict
+from typing import List
+from typing import Union
+
+from drums import Drum
 
 
 class Sequencer:
     pulses_per_beat = 2
 
-    def __init__(self, pattern, bpm):
+    def __init__(self, pattern: Dict[Drum, List[bool]], bpm: Union[int, float], **kwargs):
         self.pattern = pattern
         self.drum_patterns = {
-            drum(): cycle(drum_pattern) for drum, drum_pattern in pattern.items()
+            drum(**kwargs): cycle(drum_pattern) for drum, drum_pattern in pattern.items()
         }
 
         self.pulse_duration = self._calculate_pulse_duration(bpm)

@@ -12,7 +12,7 @@ BIT_DEPTH = 16
 DRUM_END_PADDING_SAMPLES = 10
 
 
-class DrumBaseClass(abc.ABC):
+class Drum(abc.ABC):
     SAMPLE_DURATION = 1
     T = np.linspace(0, SAMPLE_DURATION, SAMPLE_DURATION * SAMPLE_RATE, False)
     DT = T[1] - T[0]
@@ -99,12 +99,12 @@ class DrumBaseClass(abc.ABC):
         return (audio * max_range / np.max(np.abs(audio))).astype(np.int16)
 
 
-class BassDrum(DrumBaseClass):
+class BassDrum(Drum):
     DEFAULT_PARAMS = {
         'MAX_PITCH': 200,
         'MIN_PITCH': 40,
-        'AMP_DECAY': 0.2,
-        'FREQ_DECAY': 0.25,
+        'AMP_DECAY': 0.3,
+        'FREQ_DECAY': 0.2,
     }
 
     def generate_sample(self):
@@ -116,12 +116,12 @@ class BassDrum(DrumBaseClass):
         )
 
 
-class SnareDrum(DrumBaseClass):
+class SnareDrum(Drum):
     DEFAULT_PARAMS = {
-        'MAX_PITCH': 200,
-        'MIN_PITCH': 40,
+        'MAX_PITCH': 400,
+        'MIN_PITCH': 200,
         'TONE_AMP_DECAY': 0.2,
-        'FREQ_DECAY': 0.25,
+        'FREQ_DECAY': 0.3,
         'NOISE_AMP_DECAY': 0.2,
         'NOISE_VOLUME_RATIO': 0.5,
     }
@@ -140,9 +140,9 @@ class SnareDrum(DrumBaseClass):
         )
 
 
-class HighHat(DrumBaseClass):
+class HighHat(Drum):
     DEFAULT_PARAMS = {
-        'DECAY': 0.05,
+        'DECAY': 0.03,
     }
 
     def generate_sample(self):
