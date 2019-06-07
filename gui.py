@@ -1,5 +1,5 @@
 import tkinter as tk
-å
+from sequencer_gui_interface import SequencerGUIInterface, SequencerEvent
 
 GRID_BACKGROUND_COLOUR = 'blue'
 CELL_OFF_COLOUR = 'blue'
@@ -25,19 +25,61 @@ class GUI(tk.Tk):
 
     N_SLIDER_INCREMENTS = 1000
 
+    def __init__(self, *args, **kwargs):
+        sequencer_gui_interface = kwargs.pop('sequencer_gui_interface', None)
+        self.sequencer_gui_interface = sequencer_gui_interface
+
+        super().__init__(*args, **kwargs)
+
+        # Create frame
+        self.wm_title(self.TITLE)
+        self.geometry(self.GEOMETRY)
+        self.frame = tk.Frame(self)
+        self.frame.pack()
+
+        # To line up drum controls with sequencer lanes, maybe everything above the global controls should be a grid?
+
+        # For now:
+        # - global controls across the bottom
+        self._get_global_controls()
+        # - drum controls on the left
+        self._get_drum_controls()
+        # - upper right is sequencer grid
+        self._get_sequencer_grid()
+
+        # Focus on GUI window by default
+        self.lift()
+        self.attributes('-topmost', True)
+        self.after_idle(self.attributes, '-topmost', False)
+
+        # Run loop and catch the inertial scroll error if it happens
+        while True:
+            try:
+                self.mainloop()
+                break
+            except UnicodeDecodeError:
+                pass
+
+    def _push_event_to_sequencer(self, event: SequencerEvent):
+        self.sequencer_gui_interface.push_to_sequencer_events_queue(event)
+
     def _get_global_controls(self):
         frame = tk.Frame(self.frame, highlightbackground="green", highlightcolor="green", highlightthickness=1, width=500, height=100, bd= 0)
         frame.grid(column=0, row=1, columnspan=2, sticky='W')
         global_controls_section = tk.Label(frame, text='Global Controls')
         global_controls_section.pack()
 
-        tk.Button(frame, text='\u25B6', command=lambda: print('play!')).pack(side=tk.LEFT)
+        tk.Button(
+            frame,
+            text='\u25B6',
+            command=lambda: self._push_event_to_sequencer(SequencerEvent('play_or_stop')),
+        ).pack(side=tk.LEFT)
 
         tk.Scale(
             frame,
             from_=MIN_BPM,
             to=MAX_BPM,
-            command=lambda x: print('bpm change:', x),
+            command=lambda bpm: self._push_event_to_sequencer(SequencerEvent('set_bpm', {'bpm': bpm})),
             label='Beats per minute',
             orient=tk.HORIZONTAL,
             length=GLOBAL_SLIDER_WIDTH,
@@ -47,21 +89,37 @@ class GUI(tk.Tk):
             frame,
             from_=MIN_PULSES_PER_BEAT,
             to=MAX_PULSES_PER_BEAT,
-            command=lambda x: print('ppb change:', x),
+            command=lambda ppm: self._push_event_to_sequencer(SequencerEvent('set_ppm', {'ppm': ppm})),
             label='Pulses per beat',
             orient=tk.HORIZONTAL,
             length=GLOBAL_SLIDER_WIDTH,
         ).pack(side=tk.LEFT)
 
     def _get_drum_controls(self):
-        frame = tk.Frame(self.frame, highlightbackground="green", highlightcolor="green", highlightthickness=1, width=500, height=100, bd=0)
+        frame = tk.Frame(
+            self.frame,
+            highlightbackground="green",
+            highlightcolor="green",
+            highlightthickness=1,
+            width=500,
+            height=100,
+            bd=0,
+        )
         frame.grid(column=0, row=0)
         tk.Label(frame, text='Drum Controls').pack(side=tk.TOP)
         for drum in range(3):
             tk.Label(frame, text=f'Drum {drum}').pack(side=tk.TOP)
 
     def _get_sequencer_grid(self):
-        frame = tk.Frame(self.frame, highlightbackground="green", highlightcolor="green", highlightthickness=1, width=500, height=100, bd=0)
+        frame = tk.Frame(
+            self.frame,
+            highlightbackground="green",
+            highlightcolor="green",
+            highlightthickness=1,
+            width=500,
+            height=100,
+            bd=0,
+        )
         frame.grid(column=1, row=0)
         sequencer_grid = SequencerGrid(frame)
         tk.Label(frame, text='Sequencer Grid').pack()
@@ -95,43 +153,6 @@ class GUI(tk.Tk):
     #         # This has param=final value every time the command runs
     #         slider.set(value)
     #         slider.pack(side=tk.LEFT)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if args:
-            assert(type(args[0]) is SequencerGUIInterface)
-            self.sequencer_gui_interface = args[0]
-        else:
-            self.sequencer_gui_interface = kwargs['sequencer_gui_interface']
-
-        # Create frame
-        self.wm_title(self.TITLE)
-        self.geometry(self.GEOMETRY)
-        self.frame = tk.Frame(self)
-        self.frame.pack()
-
-        # To line up drum controls with sequencer lanes, maybe everything above the global controls should be a grid?
-
-        # For now:
-        # - global controls across the bottom
-        self._get_global_controls()
-        # - drum controls on the left
-        self._get_drum_controls()
-        # - upper right is sequencer grid
-        self._get_sequencer_grid()
-
-        # Focus on GUI window by default
-        self.lift()
-        self.attributes('-topmost', True)
-        self.after_idle(self.attributes, '-topmost', False)
-
-        # Run loop and catch the inertial scroll error if it happens
-        while True:
-            try:
-                self.mainloop()
-                break
-            except UnicodeDecodeError:
-                pass
 
 
 class SequencerGrid:
@@ -287,6 +308,5 @@ class SequencerCell:
         self.draw()
 
 if __name__ == '__main__':
-    sequencer_gui_interface = 1
-    # sequencer_gui_interface = SequencerGUIInterface()
+    sequencer_gui_interface = SequencerGUIInterface()
     GUI(sequencer_gui_interface=sequencer_gui_interface)
