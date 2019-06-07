@@ -23,7 +23,6 @@ if __name__ == '__main__':
             HighHat: [True],
         },
         bpm=200,
-        message='it worked bitch'
     )
 
     sequencer.play()
