@@ -3,7 +3,9 @@ from typing import List
 from drums import BassDrum
 from drums import HighHat
 from drums import SnareDrum
+from gui import GUI
 from sequencer import Sequencer
+from sequencer_gui_interface import SequencerGUIInterface
 
 
 def true_at_indices(indices: List[int], length: int = 16) -> List[bool]:
@@ -16,13 +18,17 @@ def true_at_indices(indices: List[int], length: int = 16) -> List[bool]:
 
 
 if __name__ == '__main__':
+    sequencer_gui_interface = SequencerGUIInterface()
+
     sequencer = Sequencer(
         pattern={
-            BassDrum: true_at_indices([0, 2, 10, 15]),
-            SnareDrum: true_at_indices([4, 7, 9, 12]),
-            HighHat: [True],
+            BassDrum: true_at_indices([0, 8]),
+            SnareDrum: true_at_indices([4, 12]),
+            HighHat: [1, 1, 1, 0],
         },
-        bpm=200,
+        sequencer_gui_interface=sequencer_gui_interface,
+        bpm=110,
     )
+    gui = GUI(sequencer_gui_interface=sequencer_gui_interface)
 
-    sequencer.play()
+    print('Goodbye')

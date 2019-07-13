@@ -1,5 +1,6 @@
 import tkinter as tk
-from sequencer_gui_interface import SequencerGUIInterface, SequencerEvent
+from sequencer_gui_interface import SequencerEvent
+from sequencer_gui_interface import SequencerGUIInterface
 
 GRID_BACKGROUND_COLOUR = 'blue'
 CELL_OFF_COLOUR = 'blue'
@@ -19,15 +20,17 @@ GLOBAL_SLIDER_WIDTH = 200
 
 class GUI(tk.Tk):
 
-    TITLE = 'Drum Tester'
+    TITLE = 'Drum Machine'
 
     GEOMETRY = '800x500+100+100'
 
     N_SLIDER_INCREMENTS = 1000
 
+    def __repr__(self):
+        return f'Drum Machine GUI {id(self)}'
+
     def __init__(self, *args, **kwargs):
-        sequencer_gui_interface = kwargs.pop('sequencer_gui_interface', None)
-        self.sequencer_gui_interface = sequencer_gui_interface
+        self.sequencer_gui_interface = kwargs.pop('sequencer_gui_interface', None)
 
         super().__init__(*args, **kwargs)
 

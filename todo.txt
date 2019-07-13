@@ -1,8 +1,10 @@
 - need an interface for the GUI to communicate with the sequencer:
     * (gui -> seq): play/stop, parameter changes, drum pattern changes
     * (seq -> gui): current step
+- closing GUI should kill sequencer also
+- make clock run in its own thread?
 - make GUI (live pattern and parameter changes, play/stop, tempo control)
-- independent volume controls for drums (don't wait for GUI)
+- independent volume controls for drums
 - debounce live parameter changes if performance is bad (write a decorator to put on gui event callbacks?)
 - if changes require re-generating sample, make sample construction asynchronous? (threading?)
 - run play loop in a separate thread to the rest of the program (allow parameter tweaks, also listening for the stop event)?

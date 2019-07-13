@@ -2,7 +2,7 @@ import abc
 import re
 import warnings
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy as np
 import simpleaudio as sa
 
@@ -21,6 +21,7 @@ class Drum(abc.ABC):
         '^.*DECAY$': (1e-3, SAMPLE_DURATION),
         '^.*PITCH$': (2e1, 2e3),
         '^.*RATIO$': (0, 1),
+        '^.*LEVEL': (0, 1),
     }
 
     def __init__(self, **init_params):
@@ -93,10 +94,9 @@ class Drum(abc.ABC):
     def _drum_end_index(amp_decay_time):
         return int(amp_decay_time * SAMPLE_RATE) + DRUM_END_PADDING_SAMPLES
 
-    @staticmethod
-    def _normalise(audio):
+    def _normalise(self, audio):
         max_range = 2 ** (BIT_DEPTH - 1) - 1
-        return (audio * max_range / np.max(np.abs(audio))).astype(np.int16)
+        return (self.params['AMP_LEVEL'] * audio * max_range / np.max(np.abs(audio))).astype(np.int16)
 
 
 class BassDrum(Drum):
@@ -105,6 +105,7 @@ class BassDrum(Drum):
         'MIN_PITCH': 40,
         'AMP_DECAY': 0.3,
         'FREQ_DECAY': 0.2,
+        'AMP_LEVEL': 1,
     }
 
     def generate_sample(self):
@@ -124,6 +125,7 @@ class SnareDrum(Drum):
         'FREQ_DECAY': 0.3,
         'NOISE_AMP_DECAY': 0.2,
         'NOISE_VOLUME_RATIO': 0.5,
+        'AMP_LEVEL': 1,
     }
 
     def generate_sample(self):
@@ -143,6 +145,7 @@ class SnareDrum(Drum):
 class HighHat(Drum):
     DEFAULT_PARAMS = {
         'DECAY': 0.03,
+        'AMP_LEVEL': 0.3,
     }
 
     def generate_sample(self):
