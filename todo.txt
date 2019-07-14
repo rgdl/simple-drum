@@ -1,6 +1,7 @@
+- can't stop playback from the GUI
 - need an interface for the GUI to communicate with the sequencer:
     * (gui -> seq): play/stop, parameter changes, drum pattern changes
-    * (seq -> gui): current step
+    * (seq -> gui): current step, initial parameters
 - closing GUI should kill sequencer also
 - make clock run in its own thread?
 - make GUI (live pattern and parameter changes, play/stop, tempo control)
