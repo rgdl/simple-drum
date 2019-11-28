@@ -30,5 +30,3 @@ if __name__ == '__main__':
         bpm=110,
     )
     gui = GUI(sequencer_gui_interface=sequencer_gui_interface)
-
-    print('Goodbye')

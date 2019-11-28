@@ -1,5 +1,8 @@
+import sys
 import tkinter as tk
-from sequencer_gui_interface import SequencerEvent
+from typing import Callable
+
+from sequencer_gui_interface import SequencerEvent, ListenerThread
 from sequencer_gui_interface import SequencerGUIInterface
 
 GRID_BACKGROUND_COLOUR = 'blue'
@@ -41,19 +44,30 @@ class GUI(tk.Tk):
         self.frame.pack()
 
         # To line up drum controls with sequencer lanes, maybe everything above the global controls should be a grid?
+        self.param_controls = {}
 
-        # For now:
         # - global controls across the bottom
-        self._get_global_controls()
+        self.param_controls.update(self._get_global_controls())
+
         # - drum controls on the left
-        self._get_drum_controls()
+        self.param_controls.update(self._get_drum_controls())
+
         # - upper right is sequencer grid
-        self._get_sequencer_grid()
+        self.param_controls.update(self._get_sequencer_grid())
 
         # Focus on GUI window by default
         self.lift()
         self.attributes('-topmost', True)
         self.after_idle(self.attributes, '-topmost', False)
+
+        # Start listening for messages from Sequencer
+        if self.sequencer_gui_interface:
+            ListenerThread(
+                listener=self,
+                getter_func=self.sequencer_gui_interface.get_from_gui_events_queue,
+            ).start()
+
+        self.protocol('WM_DELETE_WINDOW', self.quit)
 
         # Run loop and catch the inertial scroll error if it happens
         while True:
@@ -63,8 +77,24 @@ class GUI(tk.Tk):
             except UnicodeDecodeError:
                 pass
 
+    def initialise_params(self, **params):
+        for param_name, widget in self.param_controls.items():
+            try:
+                print('setting', param_name, 'to', params[param_name])
+                widget.set(params[param_name])
+            except AttributeError:
+                # TODO: Remove this? Should the GUI know about every parameter it's sent?
+                continue
+
     def _push_event_to_sequencer(self, event: SequencerEvent):
         self.sequencer_gui_interface.push_to_sequencer_events_queue(event)
+
+    def _build_setter_callback(self, param_name: str) -> Callable:
+        def func(param_value):
+            self._push_event_to_sequencer(
+                SequencerEvent(f'set_{param_name}', {param_name: param_value})
+            ),
+        return func
 
     def _get_global_controls(self):
         frame = tk.Frame(self.frame, highlightbackground="green", highlightcolor="green", highlightthickness=1, width=500, height=100, bd= 0)
@@ -78,25 +108,32 @@ class GUI(tk.Tk):
             command=lambda: self._push_event_to_sequencer(SequencerEvent('play_or_stop')),
         ).pack(side=tk.LEFT)
 
-        tk.Scale(
-            frame,
-            from_=MIN_BPM,
-            to=MAX_BPM,
-            command=lambda bpm: self._push_event_to_sequencer(SequencerEvent('set_bpm', {'bpm': bpm})),
-            label='Beats per minute',
-            orient=tk.HORIZONTAL,
-            length=GLOBAL_SLIDER_WIDTH,
-        ).pack(side=tk.LEFT)
+        param_controls = {
+            'bpm': tk.Scale(
+                frame,
+                from_=MIN_BPM,
+                to=MAX_BPM,
+                command=self._build_setter_callback('bpm'),
+                label='Beats per minute',
+                orient=tk.HORIZONTAL,
+                length=GLOBAL_SLIDER_WIDTH,
+            ),
+            'pulses_per_beat': tk.Scale(
+                frame,
+                from_=MIN_PULSES_PER_BEAT,
+                to=MAX_PULSES_PER_BEAT,
+                command=self._build_setter_callback('pulses_per_beat'),
+                label='Pulses per beat',
+                orient=tk.HORIZONTAL,
+                length=GLOBAL_SLIDER_WIDTH,
+            )
+        }
+        for param in param_controls.values():
+            param.pack(side=tk.LEFT)
 
-        tk.Scale(
-            frame,
-            from_=MIN_PULSES_PER_BEAT,
-            to=MAX_PULSES_PER_BEAT,
-            command=lambda ppm: self._push_event_to_sequencer(SequencerEvent('set_ppm', {'ppm': ppm})),
-            label='Pulses per beat',
-            orient=tk.HORIZONTAL,
-            length=GLOBAL_SLIDER_WIDTH,
-        ).pack(side=tk.LEFT)
+        param_controls['bpm'].set(99)
+
+        return param_controls
 
     def _get_drum_controls(self):
         frame = tk.Frame(
@@ -113,6 +150,8 @@ class GUI(tk.Tk):
         for drum in range(3):
             tk.Label(frame, text=f'Drum {drum}').pack(side=tk.TOP)
 
+        return {}
+
     def _get_sequencer_grid(self):
         frame = tk.Frame(
             self.frame,
@@ -126,10 +165,14 @@ class GUI(tk.Tk):
         frame.grid(column=1, row=0)
         sequencer_grid = SequencerGrid(frame)
         tk.Label(frame, text='Sequencer Grid').pack()
-        return sequencer_grid
+        return {'pattern': sequencer_grid}
 
+    def quit(self):
+        self._push_event_to_sequencer(SequencerEvent('quit'))
+        self.destroy()
+        print('Goodbye')
 
-    # def _get_parameter_controls(self):
+        # def _get_parameter_controls(self):
     #     drum_params = self.drum.params
     #     parameter_controls_frame = tk.Frame(self.frame)
     #     parameter_controls_frame.pack(**self.PACK_PARAMS['PARAMETER_CONTROLS'])

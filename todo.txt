@@ -1,11 +1,11 @@
-- can't stop playback from the GUI
+- review to manage complexity
+
+- get initial values from sequencer and set them on the GUI? Maybe better to simplify by passing in all initial values from the start, then the only message that needs to come from the sequencer is the step position
 - need an interface for the GUI to communicate with the sequencer:
     * (gui -> seq): play/stop, parameter changes, drum pattern changes
     * (seq -> gui): current step, initial parameters
 - closing GUI should kill sequencer also
-- make clock run in its own thread?
-- make GUI (live pattern and parameter changes, play/stop, tempo control)
-- independent volume controls for drums
+- independent parameter controls for drums
 - debounce live parameter changes if performance is bad (write a decorator to put on gui event callbacks?)
 - if changes require re-generating sample, make sample construction asynchronous? (threading?)
 - run play loop in a separate thread to the rest of the program (allow parameter tweaks, also listening for the stop event)?
@@ -13,3 +13,6 @@
 - make a soft-clipping saturator
 - why are the first few beats after playback beings rushed?
 - experiment with simple per-drum reverb (i.e. diffuse multi-delay? Will this destroy performance?)
+- change play symbol to pause symbol when playing
+- does the GUI need to learn what the global and drum-specific parameters are from the sequencer, then create the sliders at runtime?
+- The sequencer should be able to exist without the GUI. Keep a core class that's ignorant of the GUI, then subclass to a GUI-aware sequencer in the main script

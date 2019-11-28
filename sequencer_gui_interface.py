@@ -41,7 +41,6 @@ class SequencerGUIInterface:
         self._gui_events_queue = Queue()
 
     def push_to_sequencer_events_queue(self, event: SequencerEvent) -> None:
-        print('push_to_sequencer_events_queue:', event)
         self._sequencer_events_queue.put(event)
 
     def push_to_gui_events_queue(self, event: GUIEvent) -> None:
@@ -62,7 +61,7 @@ class ListenerThread(Thread):
     """
     Allows an object to poll queues for events
     """
-    POLL_INTERVAL_SECONDS = 1
+    POLL_INTERVAL_SECONDS = 0.1
 
     def __init__(self, listener: Union['GUI', 'Sequencer'], getter_func: Callable):
         super().__init__()
@@ -72,19 +71,7 @@ class ListenerThread(Thread):
     def run(self):
         while True:
             time.sleep(self.POLL_INTERVAL_SECONDS)
-            print('checking queue for events to be consumed by listener:', self.listener)
-            # Might need to handle a `queue.Empty` error
             event = self.getter_func()
             if event is None:
-                # print('nothing on the queue')
-                # TODO: is the current issue that the GUI and sequencer need to be running in separate threads?
-                # TODO: or at least just the sequencer, since the GUI may already be in its own thread
                 continue
-
-            # If `method_name` is of the form set_attr, return a lambda which sets listener.attr to the supplied value
-            # Otherwise, assume its a method on the object, and call with supplied arguments
-            if re.match('^set_.*', event.method):
-                attr_name = re.sub('^set_', '', event.method)
-                setattr(self.listener, attr_name, event.method_args[attr_name])
-            else:
-                getattr(self.listener, event.method)(**event.method_args)
+            getattr(self.listener, event.method)(**event.method_args)
